@@ -1,6 +1,7 @@
 # Visual Studio Code Workspaces Albert Plugin
 
-This is a plugin for the **[Albert Launcher](https://albertlauncher.github.io/)** which list and open VS Code workspaces and recently opened directories.
+This is a plugin for the **[Albert Launcher](https://albertlauncher.github.io/)** which list and open Visual Studio Code workspaces and recently opened directories.
+
 This plugin is inspired by the similar functionality available in PowerToys Run for Windows.
 
 ## Prerequisites
