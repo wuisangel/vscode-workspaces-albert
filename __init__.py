@@ -39,9 +39,9 @@ def normalize_string(input: str) -> str:
     return ''.join(c for c in unicodedata.normalize("NFD", input) if unicodedata.category(c) != "Mn").lower()
 
 class Plugin(PluginInstance, TriggerQueryHandler):
-    def _init_(self):
-        PluginInstance._init_(self)
-        TriggerQueryHandler._init_(
+    def __init__(self):
+        PluginInstance.__init__(self)
+        TriggerQueryHandler.__init__(
             self,
             id=md_iid,
             name=md_name,
@@ -117,7 +117,7 @@ class Plugin(PluginInstance, TriggerQueryHandler):
                 id=project["path"],
                 text=project["name"],
                 subtext=project["path"],
-                iconUrls=[f"file:{Path(_file_).parent}/vscode.svg"],
+                iconUrls=[f"file:{Path(__file__).parent}/vscode.svg"],
                 actions=[Action(
                     id="open",
                     text="Open in VS Code",
