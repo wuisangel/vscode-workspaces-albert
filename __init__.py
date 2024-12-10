@@ -10,7 +10,7 @@ from albert import *
 md_iid = "2.3"
 md_version = "1.0"
 md_name = "VS Code Workspaces"
-md_description = "List and open VS Code Workspaces and recently opened directories."
+md_description = "List and open VS Code Workspaces and recently opened directories and files."
 md_license = "MIT"
 md_url = "https://github.com/wuisangel/vscode-workspaces-albert"
 md_authors = "@wuisangel"
@@ -47,7 +47,7 @@ class Plugin(PluginInstance, TriggerQueryHandler):
             name=md_name,
             description=md_description,
             defaultTrigger= '{ ',
-            synopsis="<search term>",
+            synopsis="Project/Folder or File",
         )
 
     def handleTriggerQuery(self, query):
@@ -56,7 +56,7 @@ class Plugin(PluginInstance, TriggerQueryHandler):
 
         query_str = normalize_string(query.string)
         projects = []
-
+        
         # Fetch recent projects from state.vscdb
         if os.path.exists(STORAGE_DB_PATH):
             try:
@@ -67,14 +67,24 @@ class Plugin(PluginInstance, TriggerQueryHandler):
                 if result:
                     paths = json.loads(result[0]).get("entries", [])
                     for entry in paths:
-                        uri = entry.get("folderUri", "")
+                        # Get uri and type (File or Project/Folder)
+                        if entry.get("folderUri", ""):
+                            uri = entry.get("folderUri", "")
+                            type = "Project/Folder"
+                        elif entry.get("fileUri", ""):
+                            uri = entry.get("fileUri", "")
+                            type = "File"
                         if uri.startswith("file://"):
                             path = uri.replace("file://", "")
-                            if query_str in normalize_string(path):
-                                projects.append({
-                                    "name": os.path.basename(path),
-                                    "path": path,
-                                })
+                            # Check if project already exists in list of projects
+                            exists_project = (path in [project["path"] for project in projects]) and \
+                                (os.path.basename(uri) in [project["name"] for project in projects])
+                            if query_str in normalize_string(path) and not exists_project:
+                                    projects.append({
+                                        "name": os.path.basename(path),
+                                        "path": path,
+                                        "type": type,
+                                    })
             except Exception as e:
                 warning(f"Error reading state.vscdb: {e}")
 
@@ -89,34 +99,27 @@ class Plugin(PluginInstance, TriggerQueryHandler):
                             if "Open &&Recent" in item.get("label", ""):
                                 for sub_item in item.get("submenu", {}).get("items", []):
                                     uri = sub_item.get("uri", {}).get("external", "")
-                                    if query_str in normalize_string(uri):
-                                        projects.append({
-                                            "name": os.path.basename(uri),
-                                            "path": uri,
-                                        })
+                                    if uri.startswith("file://"):
+                                        uri = uri.replace("file://", "")
+                                        # Check if project already exists in list of projects
+                                        exists_project = (uri in [project["path"] for project in projects]) and \
+                                            (os.path.basename(uri) in [project["name"] for project in projects])
+                                        if (query_str in normalize_string(uri) and uri != "") and not exists_project:
+                                                projects.append({
+                                                    "name": os.path.basename(uri),
+                                                    "path": uri,
+                                                    "type": "Project/Folder" if sub_item.get("id", {}) == \
+                                                    	"openRecentFolder" else "File",
+                                                })
                 except Exception as e:
                     warning(f"Error reading {json_path}: {e}")
-
-        # Fetch projects from Project Manager plugin
-        if os.path.exists(PROJECT_MANAGER_JSON_PATH):
-            try:
-                with open(PROJECT_MANAGER_JSON_PATH, "r") as f:
-                    project_manager_projects = json.load(f)
-                    for project in project_manager_projects:
-                        if query_str in normalize_string(project.get("rootPath", "")):
-                            projects.append({
-                                "name": project.get("name", "Unnamed"),
-                                "path": project.get("rootPath"),
-                            })
-            except Exception as e:
-                warning(f"Error reading Project Manager JSON: {e}")
 
         # Add projects to query results
         for project in projects:
             query.add(StandardItem(
                 id=project["path"],
                 text=project["name"],
-                subtext=project["path"],
+                subtext= project["type"] + ": " + project["path"],
                 iconUrls=[f"file:{Path(__file__).parent}/vscode.svg"],
                 actions=[Action(
                     id="open",
@@ -124,3 +127,15 @@ class Plugin(PluginInstance, TriggerQueryHandler):
                     callable=lambda p=project["path"]: runDetachedProcess([EXEC, p]),
                 )],
             ))
+        # Add a item to open a new VS Code empty window
+        query.add(StandardItem(
+            id="code",
+            text="New empty window",
+            subtext= "Open a new VS Code empty window",
+            iconUrls=[f"file:{Path(__file__).parent}/vscode.svg"],
+            actions=[Action(
+                id="open",
+                text="Open in VS Code",
+                callable=lambda p="-n": runDetachedProcess([EXEC, p]),
+            )],
+        ))
