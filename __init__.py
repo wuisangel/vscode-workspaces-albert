@@ -67,23 +67,31 @@ class Plugin(PluginInstance, TriggerQueryHandler):
                 if result:
                     paths = json.loads(result[0]).get("entries", [])
                     for entry in paths:
-                        # Get uri and type (File or Project/Folder)
+                        # Check if the File or Project/Folder exists in the operative system
                         if entry.get("folderUri", ""):
                             uri = entry.get("folderUri", "")
-                            type = "Project/Folder"
                         elif entry.get("fileUri", ""):
                             uri = entry.get("fileUri", "")
-                            type = "File"
+                        else:
+                            continue
                         if uri.startswith("file://"):
                             path = uri.replace("file://", "")
+                            if entry.get("folderUri", ""):
+                                exists_in_os = True if os.path.isdir(path) else False
+                            elif entry.get("fileUri", ""):
+                                exists_in_os = True if os.path.isfile(path) else False
+                            else:
+                                exists_in_os = False
+                            if not exists_in_os:
+                                continue
                             # Check if project already exists in list of projects
                             exists_project = (path in [project["path"] for project in projects]) and \
-                                (os.path.basename(uri) in [project["name"] for project in projects])
+                                (os.path.basename(path) in [project["name"] for project in projects])
                             if query_str in normalize_string(path) and not exists_project:
                                     projects.append({
                                         "name": os.path.basename(path),
                                         "path": path,
-                                        "type": type,
+                                        "type": "Project/Folder" if entry.get("folderUri", "") else "File",
                                     })
             except Exception as e:
                 warning(f"Error reading state.vscdb: {e}")
@@ -101,6 +109,15 @@ class Plugin(PluginInstance, TriggerQueryHandler):
                                     uri = sub_item.get("uri", {}).get("external", "")
                                     if uri.startswith("file://"):
                                         uri = uri.replace("file://", "")
+                                        # Check if the File or Project/Folder exists in the operative system
+                                        if sub_item.get("id", {}) == "openRecentFolder":
+                                            exists_in_os = True if os.path.isdir(uri) else False
+                                        elif sub_item.get("id", {}) == "openRecentFile":
+                                            exists_in_os = True if os.path.isfile(uri) else False
+                                        else:
+                                            exists_in_os = False
+                                        if not exists_in_os:
+                                            continue
                                         # Check if project already exists in list of projects
                                         exists_project = (uri in [project["path"] for project in projects]) and \
                                             (os.path.basename(uri) in [project["name"] for project in projects])
@@ -127,7 +144,7 @@ class Plugin(PluginInstance, TriggerQueryHandler):
                     callable=lambda p=project["path"]: runDetachedProcess([EXEC, p]),
                 )],
             ))
-        # Add a item to open a new VS Code empty window
+        # Add an item to open a new VS Code empty window
         query.add(StandardItem(
             id="code",
             text="New empty window",
