@@ -8,7 +8,7 @@ from pathlib import Path
 from albert import *
 
 md_iid = "2.3"
-md_version = "1.0"
+md_version = "2.0"
 md_name = "VS Code Workspaces"
 md_description = "List and open VS Code Workspaces and recently opened directories and files."
 md_license = "MIT"
