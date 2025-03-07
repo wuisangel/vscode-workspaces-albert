@@ -7,8 +7,8 @@ import sqlite3
 from pathlib import Path
 from albert import *
 
-md_iid = "2.3"
-md_version = "2.0"
+md_iid = "3.0"
+md_version = "3.0"
 md_name = "VS Code Workspaces"
 md_description = "List and open VS Code Workspaces and recently opened directories and files."
 md_license = "MIT"
@@ -41,14 +41,13 @@ def normalize_string(input: str) -> str:
 class Plugin(PluginInstance, TriggerQueryHandler):
     def __init__(self):
         PluginInstance.__init__(self)
-        TriggerQueryHandler.__init__(
-            self,
-            id=md_iid,
-            name=md_name,
-            description=md_description,
-            defaultTrigger= '{ ',
-            synopsis="Project/Folder or File",
-        )
+        TriggerQueryHandler.__init__(self)
+
+    def sypnosis(self, query):
+        return "Project/Folder or File"
+
+    def defaultTrigger(self):
+        return '{ '
 
     def handleTriggerQuery(self, query):
         if not query.isValid:
@@ -56,7 +55,7 @@ class Plugin(PluginInstance, TriggerQueryHandler):
 
         query_str = normalize_string(query.string)
         projects = []
-        
+
         # Fetch recent projects from state.vscdb
         if os.path.exists(STORAGE_DB_PATH):
             try:
