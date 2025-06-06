@@ -54,6 +54,9 @@ class Plugin(PluginInstance, TriggerQueryHandler):
             return
 
         query_str = normalize_string(query.string)
+        # If query is empty or too short, do not proceed to avoid unnecessary processing and crashes
+        if not query_str or len(query_str) < 1:
+            return
         projects = []
 
         # Fetch recent projects from state.vscdb
@@ -131,7 +134,8 @@ class Plugin(PluginInstance, TriggerQueryHandler):
                     warning(f"Error reading {json_path}: {e}")
 
         # Add projects to query results
-        for project in projects:
+        # Limit to the first 30 projects to avoid overwhelming the user and crashing the interface
+        for project in projects[:30]:
             query.add(StandardItem(
                 id=project["path"],
                 text=project["name"],
